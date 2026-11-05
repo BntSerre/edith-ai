@@ -873,8 +873,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-    });
-  }
 
   if (testVoiceBtn) {
     testVoiceBtn.addEventListener('click', () => {
