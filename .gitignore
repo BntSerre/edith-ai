@@ -8,3 +8,6 @@ Thumbs.db
 .vscode/
 .idea/
 .gemini/
+
+# Sibling projects
+edith-s24-ultra/
