@@ -1,5 +1,5 @@
-// E.D.I.T.H. Tactical AI Service Worker v2.0.5
-const CACHE_NAME = 'edith-tactical-v2.0.5';
+// E.D.I.T.H. Tactical AI Service Worker v2.0.6
+const CACHE_NAME = 'edith-tactical-v2.0.6';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
