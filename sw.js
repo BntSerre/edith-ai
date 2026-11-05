@@ -1,5 +1,5 @@
-// E.D.I.T.H. Tactical AI Service Worker
-const CACHE_NAME = 'edith-tactical-v1.0.0';
+// E.D.I.T.H. Tactical AI Service Worker v2.0.0
+const CACHE_NAME = 'edith-tactical-v2.0.0';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -18,24 +18,25 @@ const ASSETS_TO_CACHE = [
   './favicon.ico'
 ];
 
-// Install: Cache core assets
+// Install: Cache assets immediately and skip waiting
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[EDITH SW] Mise en cache des protocoles système...');
+      console.log('[EDITH SW v2.0.0] Installation et mise en cache...');
       return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
-// Activate: Clean up older cache versions
+// Activate: Delete all previous caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((name) => {
           if (name !== CACHE_NAME) {
-            console.log('[EDITH SW] Purge des anciens protocoles:', name);
+            console.log('[EDITH SW] Purge ancien cache:', name);
             return caches.delete(name);
           }
         })
@@ -44,21 +45,21 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: Strategy
+// Fetch: NETWORK-FIRST for HTML & Scripts, Cache as offline fallback
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Do not cache external AI API requests (Gemini, Groq, OpenAI)
+  // Never intercept external AI APIs
   if (url.origin.includes('googleapis.com') || 
       url.origin.includes('groq.com') || 
       url.origin.includes('openai.com')) {
     return;
   }
 
-  // Stale-While-Revalidate for app assets
+  // Network-First strategy
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
+    fetch(event.request)
+      .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -66,12 +67,10 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return networkResponse;
-      }).catch(() => {
+      })
+      .catch(() => {
         // Fallback to cache if offline
-        return cachedResponse;
-      });
-
-      return cachedResponse || fetchPromise;
-    })
+        return caches.match(event.request);
+      })
   );
 });
