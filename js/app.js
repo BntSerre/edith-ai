@@ -56,6 +56,51 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeInstallModal = document.getElementById('closeInstallModal');
 
   // ----------------------------------------------------
+  // iPhone Air / iOS Touch, Haptic & Audio Unlock
+  // ----------------------------------------------------
+  function triggerHaptic(type = 'light') {
+    if (navigator.vibrate) {
+      try {
+        if (type === 'light') navigator.vibrate(10);
+        else if (type === 'medium') navigator.vibrate(22);
+        else if (type === 'heavy') navigator.vibrate([25, 45, 25]);
+      } catch (e) {}
+    }
+  }
+
+  // Unlock iOS Safari Web Audio & SpeechSynthesis on first touch
+  let iosUnlocked = false;
+  function unlockIOSAudio() {
+    if (iosUnlocked) return;
+    iosUnlocked = true;
+    if (window.edithAudio) window.edithAudio.ensureAudioResumed();
+    if (window.speechSynthesis) {
+      try {
+        const dummy = new SpeechSynthesisUtterance('');
+        dummy.volume = 0;
+        window.speechSynthesis.speak(dummy);
+      } catch (e) {}
+    }
+    document.removeEventListener('touchstart', unlockIOSAudio);
+    document.removeEventListener('click', unlockIOSAudio);
+  }
+  document.addEventListener('touchstart', unlockIOSAudio, { passive: true });
+  document.addEventListener('click', unlockIOSAudio, { passive: true });
+
+  // iOS Virtual Keyboard & Viewport resize handler
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
+        setTimeout(() => {
+          activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (dialogueStream) dialogueStream.scrollTop = dialogueStream.scrollHeight;
+        }, 120);
+      }
+    });
+  }
+
+  // ----------------------------------------------------
   // PWA Install Prompt Logic
   // ----------------------------------------------------
   let deferredInstallPrompt = null;
@@ -174,6 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ----------------------------------------------------
   tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
+      triggerHaptic('light');
       const targetTab = btn.dataset.tab;
       window.edithAudio.playBeep(1000, 0.04);
 
@@ -313,12 +359,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (sendBtn) {
-    sendBtn.addEventListener('click', () => handleUserSubmit());
+    sendBtn.addEventListener('click', () => {
+      triggerHaptic('light');
+      handleUserSubmit();
+    });
   }
 
   if (messageInput) {
     messageInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') handleUserSubmit();
+      if (e.key === 'Enter') {
+        triggerHaptic('light');
+        handleUserSubmit();
+      }
     });
   }
 
@@ -327,6 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ----------------------------------------------------
   if (voiceMainBtn) {
     voiceMainBtn.addEventListener('click', () => {
+      triggerHaptic('medium');
       window.edithAudio.ensureAudioResumed();
       window.edithSpeech.toggle();
     });
@@ -334,6 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (reactorWrapper) {
     reactorWrapper.addEventListener('click', () => {
+      triggerHaptic('medium');
       window.edithAudio.ensureAudioResumed();
       // If currently speaking, stop speech
       if (window.edithAudio.isSpeaking) {
@@ -374,6 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ----------------------------------------------------
   quickChips.forEach(chip => {
     chip.addEventListener('click', () => {
+      triggerHaptic('light');
       const prompt = chip.dataset.prompt;
       if (prompt) {
         window.edithAudio.playBeep(700, 0.05);
@@ -389,6 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (arScanBtn) {
     arScanBtn.addEventListener('click', async () => {
+      triggerHaptic('heavy');
       try {
         arScanBtn.disabled = true;
         arScanBtn.innerHTML = '⚡ ANALYSE TACTIQUE EN COURS...';
@@ -410,6 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (closeArResults) {
     closeArResults.addEventListener('click', () => {
+      triggerHaptic('light');
       arResultsModal.classList.remove('show');
       window.edithAudio.stopSpeaking();
     });
@@ -417,12 +474,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (switchCamBtn) {
     switchCamBtn.addEventListener('click', () => {
+      triggerHaptic('light');
       window.edithVision.toggleCamera();
     });
   }
 
   if (torchBtn) {
     torchBtn.addEventListener('click', async () => {
+      triggerHaptic('light');
       const state = await window.edithVision.toggleTorch();
       torchBtn.style.color = state ? 'var(--vision-orange-bright)' : 'var(--jarvis-blue)';
     });

@@ -7,10 +7,12 @@
   
   <!-- PWA & Mobile Meta Tags -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#020912">
+  <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="E.D.I.T.H.">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="mobile-web-app-capable" content="yes">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
@@ -31,6 +33,13 @@
   <!-- Main Mobile App Frame -->
   <div class="app-container">
     
+    <!-- Dynamic Island HUD Frame (iPhone Air / Modern iOS) -->
+    <div class="dynamic-island-frame" id="dynamicIslandFrame">
+      <div class="island-wing left"><span>[ EDITH</span></div>
+      <div class="island-notch-spacer"></div>
+      <div class="island-wing right"><span class="island-dot"></span><span>AIR-MK.V ]</span></div>
+    </div>
+
     <!-- Top Telemetry Header -->
     <header class="hud-header">
       <div class="brand-section">

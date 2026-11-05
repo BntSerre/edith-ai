@@ -15,6 +15,7 @@
 - 🟠 **Énergie Vision** : Nuances d'orange solaire ambré (`#ff7b00`) pour le noyau ARC central, les réticules de ciblage et la vision tactique.
 - 🗣️ **Voix & Écoute E.D.I.T.H.** : Synthèse vocale naturelle et reconnaissance vocale directe en français. Elle vous répond avec le ton calme, précis et dévoué d'E.D.I.T.H.
 - 📷 **Vision AR Tactique** : Caméra temps réel avec surcouche HUD holographique et analyse d'image multimodale par IA (Gemini Vision).
+- 📱 **Optimisation iPhone Air & iOS** : Intégration Dynamic Island, gestion des Safe Areas (barre Home tactile), noir pur OLED (`#000000`) pour maximiser l'autonomie, accélération fluide 120Hz ProMotion et retours haptiques Taptic Engine.
 - 🛠️ **Protocoles & Outils** : Journal de mission (mémos vocaux et écrits), minuteur tactique, télémétrie de l'appareil (batterie, GPS, réseau) et balise de détresse SOS.
 - 🧠 **Cerveau IA Multi-Modèles** : Compatible avec **Google Gemini** (1.5 Flash / 2.0 Flash avec vision multimodale), **Groq Cloud** (Llama 3.3 ultra-rapide), **OpenAI** (GPT-4o), ainsi qu'un **Moteur Autonome Hors-Ligne** qui fonctionne sans clé et sans connexion !
 
