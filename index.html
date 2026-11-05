@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>E.D.I.T.H. — Stark Tactical AI</title>
+  
+  <!-- PWA & Mobile Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#020912">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="E.D.I.T.H.">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+
+  <!-- Futuristic Tactical Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+  <!-- HUD CSS -->
+  <link rel="stylesheet" href="css/hud.css">
+</head>
+<body>
+  <!-- HUD Ambient Overlays -->
+  <div class="hud-grid-bg"></div>
+  <div class="scanlines"></div>
+
+  <!-- Main Mobile App Frame -->
+  <div class="app-container">
+    
+    <!-- Top Telemetry Header -->
+    <header class="hud-header">
+      <div class="brand-section">
+        <div class="brand-icon">
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#00e5ff" stroke-width="3" stroke-dasharray="10, 5"/>
+            <circle cx="50" cy="50" r="32" fill="none" stroke="#ff7b00" stroke-width="4"/>
+            <circle cx="50" cy="50" r="16" fill="#00e5ff"/>
+            <circle cx="50" cy="50" r="8" fill="#ffffff"/>
+          </svg>
+        </div>
+        <div class="brand-title">
+          <span class="brand-name">E.D.I.T.H.</span>
+          <span class="brand-subtitle">STARK TACTICAL AI // MK-V</span>
+        </div>
+      </div>
+
+      <div class="telemetry-badges">
+        <div class="telem-pill">
+          <div class="status-dot"></div>
+          <span id="headerTime">T+00:00:00</span>
+        </div>
+        <div class="telem-pill active">
+          <div class="status-dot orange"></div>
+          <span id="headerBattery">100%</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Views Container -->
+    <main class="view-container">
+
+      <!-- ==============================================
+           TAB 1: HUD & VOICE ASSISTANT (MAIN)
+           ============================================== -->
+      <section id="tabVoice" class="hud-tab-pane active">
+        <!-- Reactor & Waveform Section -->
+        <div class="reactor-hero-section">
+          <div class="reactor-wrapper" id="reactorWrapper" title="Appuyez pour parler à EDITH">
+            <div class="reactor-rings"></div>
+            <div class="reactor-rings-inner"></div>
+            <div class="reactor-core">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Waveform Canvas -->
+          <canvas id="waveformCanvas" class="waveform-canvas"></canvas>
+          <div class="edith-status-text" id="edithStatusText">SYSTÈME NOMINAL // PRÊT</div>
+        </div>
+
+        <!-- Tactical Quick Chips -->
+        <div class="quick-chips-wrapper">
+          <button class="quick-chip" data-prompt="Donne-moi un rapport de situation complet de mes systèmes.">
+            <span>⚡</span> Rapport de situation
+          </button>
+          <button class="quick-chip" data-prompt="Quels sont tes protocoles d'aide tactique et comment peux-tu m'assister ?">
+            <span>🛡️</span> Protocoles tactiques
+          </button>
+          <button class="quick-chip" data-prompt="Génère une idée de projet ou d'application révolutionnaire digne de Stark Industries.">
+            <span>💡</span> Idée Stark
+          </button>
+          <button class="quick-chip" data-prompt="Aide-moi à structurer et coder un algorithme optimisé.">
+            <span>💻</span> Code & Algorithmes
+          </button>
+          <button class="quick-chip" data-prompt="Raconte-moi l'histoire d'EDITH et de Tony Stark.">
+            <span>🕶️</span> Histoire EDITH
+          </button>
+        </div>
+
+        <!-- Dialogue History -->
+        <div class="dialogue-stream" id="dialogueStream">
+          <!-- Messages will be dynamically rendered here -->
+        </div>
+
+        <!-- Bottom Input Bar -->
+        <div class="tactical-input-bar">
+          <button class="voice-main-btn" id="voiceMainBtn" title="Microphone / Voix EDITH">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </button>
+
+          <input type="text" id="messageInput" class="tactical-input" placeholder="Donnez un ordre à E.D.I.T.H..." autocomplete="off">
+
+          <button class="send-btn" id="sendBtn" title="Envoyer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- ==============================================
+           TAB 2: AR TACTICAL VISION (CAMERA SCANNER)
+           ============================================== -->
+      <section id="tabVision" class="hud-tab-pane">
+        <div class="ar-view-pane">
+          <div class="camera-stream-wrapper">
+            <video id="cameraVideo" autoplay playsinline muted></video>
+            <canvas id="cameraCanvas"></canvas>
+
+            <!-- Holographic Overlays -->
+            <div class="ar-hud-overlay">
+              <div class="ar-telemetry-badge">
+                [LUNETTES E.D.I.T.H. // MODE AR ACTIF]
+              </div>
+
+              <div class="ar-corners"></div>
+              <div class="ar-target-reticle"></div>
+              <div class="ar-scanline"></div>
+
+              <div class="ar-telemetry-badge" style="align-self: flex-end; border-color: var(--vision-orange); color: var(--vision-orange-bright);">
+                SPECTRE MULTIMODAL GEMINI
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Camera Controls -->
+          <div class="ar-controls-bar">
+            <button class="btn-icon" id="switchCamBtn" title="Inverser caméra">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6M1 20v-6h6"/>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </svg>
+            </button>
+
+            <button class="ar-scan-btn" id="arScanBtn">
+              ⚡ SCANNER LA CIBLE
+            </button>
+
+            <button class="btn-icon" id="torchBtn" title="Flash / Torche">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Slide-up Analysis Results Drawer -->
+          <div class="ar-results-modal" id="arResultsModal">
+            <div class="ar-results-header">
+              <span style="color:var(--jarvis-blue);font-weight:700;font-size:13px;letter-spacing:1px;">
+                ⚡ RAPPORT D'ANALYSE OPTIQUE
+              </span>
+              <button class="btn-icon" id="closeArResults">✕</button>
+            </div>
+            <div class="ar-results-content" id="arResultsText">
+              Analyse en cours...
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================
+           TAB 3: PROTOCOLES & OUTILS STARK
+           ============================================== -->
+      <section id="tabTools" class="hud-tab-pane">
+        <div class="tools-view-pane">
+          <!-- Device Telemetry Card -->
+          <div class="tool-card">
+            <div class="tool-card-title">
+              <span>📡 TÉLÉMÉTRIE DE L'APPAREIL</span>
+              <span style="font-size:10px;font-family:var(--font-mono);color:var(--vision-orange);">SYNCHRO OK</span>
+            </div>
+            <div class="telemetry-grid">
+              <div class="telem-box">
+                <div class="telem-box-label">BATTERIE INTERNE</div>
+                <div class="telem-box-val" id="telemBattery">98%</div>
+              </div>
+              <div class="telem-box">
+                <div class="telem-box-label">LIAISON RÉSEAU</div>
+                <div class="telem-box-val" id="telemNet">En ligne</div>
+              </div>
+              <div class="telem-box">
+                <div class="telem-box-label">COORDONNÉES TACTIQUES</div>
+                <div class="telem-box-val" id="telemCoords" style="font-size:11px;">En attente...</div>
+              </div>
+              <div class="telem-box">
+                <div class="telem-box-label">AFFICHAGE & CŒURS</div>
+                <div class="telem-box-val" id="telemScreen" style="font-size:11px;">390x844 (8)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tactical Timer -->
+          <div class="tool-card orange">
+            <div class="tool-card-title">
+              <span>⏱️ MINUTEUR TACTIQUE STARK</span>
+              <span style="font-size:10px;font-family:var(--font-mono);">COMPTE À REBOURS</span>
+            </div>
+            <div class="timer-display" id="timerDisplay">00:00</div>
+            <div class="timer-controls">
+              <button class="action-btn timer-preset-btn" data-seconds="60">1 Min</button>
+              <button class="action-btn timer-preset-btn" data-seconds="300">5 Min</button>
+              <button class="action-btn timer-preset-btn" data-seconds="900">15 Min</button>
+              <button class="action-btn timer-preset-btn" data-seconds="1500">25 Min</button>
+              <button class="action-btn orange" id="stopTimerBtn">Arrêter</button>
+            </div>
+          </div>
+
+          <!-- Tactical Mission Notes -->
+          <div class="tool-card">
+            <div class="tool-card-title">
+              <span>📝 JOURNAL DE MISSION & MÉMOS</span>
+              <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);">LOCAL STORAGE</span>
+            </div>
+            <div class="note-input-row">
+              <input type="text" id="noteInput" class="tactical-input" placeholder="Ajouter une note ou un mémo tactique...">
+              <button class="send-btn" id="addNoteBtn">+</button>
+            </div>
+            <div class="notes-list" id="notesContainer">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Emergency Beacon -->
+          <div class="tool-card" style="border-color: rgba(255, 51, 68, 0.4);">
+            <div class="tool-card-title" style="color:var(--danger-red);">
+              <span>🚨 BALISE D'URGENCE SOS</span>
+              <span style="font-size:10px;font-family:var(--font-mono);">MORSE TACTIQUE</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;line-height:1.4;">
+              Active un signal stroboscopique visuel et sonore SOS d'urgence pour la localisation sur le terrain.
+            </p>
+            <button class="action-btn" id="sosBtn" style="border-color:var(--danger-red);color:var(--danger-red);">
+              DÉCLENCHER BALISE SOS
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================
+           TAB 4: CONFIGURATION & AI CORE SETTINGS
+           ============================================== -->
+      <section id="tabSettings" class="hud-tab-pane">
+        <div class="settings-view-pane">
+          
+          <!-- PWA Mobile Install Banner -->
+          <div class="tool-card orange" id="installBannerCard">
+            <div class="tool-card-title">
+              <span>📱 INSTALLATION SMARTPHONE</span>
+              <span style="font-size:10px;font-family:var(--font-mono);">PWA</span>
+            </div>
+            <p style="font-size:12px;color:var(--text-main);margin-bottom:12px;line-height:1.5;">
+              Installez E.D.I.T.H. sur votre téléphone comme une véritable application native avec icône, mode plein écran et accès hors-ligne.
+            </p>
+            <button class="action-btn orange" id="installAppBtn" style="width:100%;font-size:13px;height:44px;">
+              📲 INSTALLER SUR MON TÉLÉPHONE
+            </button>
+          </div>
+
+          <!-- AI Provider Settings -->
+          <div class="tool-card">
+            <div class="tool-card-title">
+              <span>🧠 NOYAU D'INTELLIGENCE ARTIFICIELLE</span>
+            </div>
+            
+            <div class="setting-group">
+              <label class="setting-label">Fournisseur d'IA</label>
+              <select id="providerSelect" class="setting-select">
+                <option value="gemini">Google Gemini (Multimodal Vision & Audio)</option>
+                <option value="groq">Groq Cloud (Llama 3.3 - Vitesse Éclair)</option>
+                <option value="openai">OpenAI (GPT-4o-mini)</option>
+                <option value="offline">Mode Autonome E.D.I.T.H. (Hors Ligne / Sans Clé)</option>
+              </select>
+              <span class="setting-note">Gemini est recommandé pour la vision AR et les réponses illimitées.</span>
+            </div>
+
+            <div class="setting-group" style="margin-top:10px;">
+              <label class="setting-label">Clé API (Sauvegardée localement)</label>
+              <input type="password" id="apiKeyInput" class="setting-input" placeholder="Collez votre clé API ici (ex: AIzaSy...)">
+              <span class="setting-note">Votre clé reste 100% privée sur votre appareil. Laissez vide pour le mode autonome local.</span>
+            </div>
+
+            <div class="setting-group" style="margin-top:10px;">
+              <label class="setting-label">Modèle IA</label>
+              <select id="modelSelect" class="setting-select">
+                <option value="gemini-1.5-flash">gemini-1.5-flash (Ultra Rapide & Vision)</option>
+                <option value="gemini-2.0-flash">gemini-2.0-flash (Nouvelle génération)</option>
+                <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Groq)</option>
+                <option value="gpt-4o-mini">gpt-4o-mini (OpenAI)</option>
+              </select>
+            </div>
+
+            <div class="setting-group" style="margin-top:10px;">
+              <label class="setting-label">Nom de l'utilisateur / Indicatif</label>
+              <input type="text" id="userCallsignInput" class="setting-input" placeholder="Monsieur, Commandant, Benoît...">
+            </div>
+          </div>
+
+          <!-- Speech & Voice Customization -->
+          <div class="tool-card">
+            <div class="tool-card-title">
+              <span>🗣️ VOIX D'E.D.I.T.H. & SYNTHÈSE</span>
+            </div>
+            
+            <div class="setting-group">
+              <label class="setting-label">Sélection de la voix vocale</label>
+              <select id="voiceSelect" class="setting-select"></select>
+            </div>
+
+            <div class="action-btn-row">
+              <button class="action-btn" id="testVoiceBtn">🔊 Tester la voix</button>
+            </div>
+          </div>
+
+          <!-- Save and Maintenance -->
+          <div class="action-btn-row">
+            <button class="action-btn orange" id="saveSettingsBtn">💾 ENREGISTRER LES PROTOCOLES</button>
+            <button class="action-btn" id="clearChatBtn" style="border-color:var(--danger-red);color:var(--danger-red);">🗑️ Effacer chat</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom HUD Navigation -->
+    <nav class="hud-bottom-nav">
+      <button class="nav-tab-item active" data-tab="tabVoice">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 8v8M8 12h8"/>
+        </svg>
+        <span>Voix HUD</span>
+      </button>
+
+      <button class="nav-tab-item" data-tab="tabVision">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+        </svg>
+        <span>Vision AR</span>
+      </button>
+
+      <button class="nav-tab-item" data-tab="tabTools">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+        </svg>
+        <span>Protocoles</span>
+      </button>
+
+      <button class="nav-tab-item" data-tab="tabSettings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Paramètres</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- PWA Install Guide Modal (iOS & Android) -->
+  <div class="install-modal-overlay" id="installModal">
+    <div class="install-card">
+      <div style="font-size:32px;">📱</div>
+      <h3>INSTALLER E.D.I.T.H.</h3>
+      <p>Pour installer l'application sur votre écran d'accueil sans passer par l'App Store ou Google Play :</p>
+      
+      <div class="install-instructions">
+        <strong style="color:var(--vision-orange);">Sur iPhone / iPad (Safari) :</strong><br>
+        1. Appuyez sur le bouton <strong>Partager</strong> <span style="font-size:14px;">⎙ / ⎋</span> en bas de Safari.<br>
+        2. Faites défiler vers le bas et sélectionnez <strong>« Sur l'écran d'accueil »</strong> ➕.<br>
+        3. Appuyez sur <strong>Ajouter</strong> en haut à droite.
+        <br><br>
+        <strong style="color:var(--jarvis-blue);">Sur Android (Chrome / Brave) :</strong><br>
+        1. Appuyez sur le menu (les 3 points en haut à droite).<br>
+        2. Sélectionnez <strong>« Installer l'application »</strong> ou <strong>« Ajouter à l'écran d'accueil »</strong>.
+      </div>
+
+      <button class="action-btn orange" id="closeInstallModal" style="width:100%;">COMPRIS, MONSIEUR</button>
+    </div>
+  </div>
+
+  <!-- App Scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/speech.js"></script>
+  <script src="js/ai-service.js"></script>
+  <script src="js/vision-scanner.js"></script>
+  <script src="js/tools.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

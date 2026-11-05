@@ -1,0 +1,613 @@
+/**
+ * E.D.I.T.H. Tactical AI - Main Application Controller
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+  // ----------------------------------------------------
+  // DOM Elements
+  // ----------------------------------------------------
+  const tabButtons = document.querySelectorAll('.nav-tab-item');
+  const tabPanes = document.querySelectorAll('.hud-tab-pane');
+  const reactorWrapper = document.getElementById('reactorWrapper');
+  const edithStatusText = document.getElementById('edithStatusText');
+  const waveformCanvas = document.getElementById('waveformCanvas');
+  const dialogueStream = document.getElementById('dialogueStream');
+  const messageInput = document.getElementById('messageInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const voiceMainBtn = document.getElementById('voiceMainBtn');
+  const quickChips = document.querySelectorAll('.quick-chip');
+  const headerTime = document.getElementById('headerTime');
+  const headerBattery = document.getElementById('headerBattery');
+
+  // Vision Elements
+  const cameraVideo = document.getElementById('cameraVideo');
+  const cameraCanvas = document.getElementById('cameraCanvas');
+  const arScanBtn = document.getElementById('arScanBtn');
+  const switchCamBtn = document.getElementById('switchCamBtn');
+  const torchBtn = document.getElementById('torchBtn');
+  const arResultsModal = document.getElementById('arResultsModal');
+  const arResultsText = document.getElementById('arResultsText');
+  const closeArResults = document.getElementById('closeArResults');
+
+  // Tools Elements
+  const noteInput = document.getElementById('noteInput');
+  const addNoteBtn = document.getElementById('addNoteBtn');
+  const notesContainer = document.getElementById('notesContainer');
+  const timerDisplay = document.getElementById('timerDisplay');
+  const timerPresetBtns = document.querySelectorAll('.timer-preset-btn');
+  const stopTimerBtn = document.getElementById('stopTimerBtn');
+  const telemBattery = document.getElementById('telemBattery');
+  const telemCoords = document.getElementById('telemCoords');
+  const telemNet = document.getElementById('telemNet');
+  const telemScreen = document.getElementById('telemScreen');
+  const sosBtn = document.getElementById('sosBtn');
+
+  // Settings Elements
+  const providerSelect = document.getElementById('providerSelect');
+  const apiKeyInput = document.getElementById('apiKeyInput');
+  const modelSelect = document.getElementById('modelSelect');
+  const userCallsignInput = document.getElementById('userCallsignInput');
+  const voiceSelect = document.getElementById('voiceSelect');
+  const testVoiceBtn = document.getElementById('testVoiceBtn');
+  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+  const clearChatBtn = document.getElementById('clearChatBtn');
+  const installAppBtn = document.getElementById('installAppBtn');
+  const installModal = document.getElementById('installModal');
+  const closeInstallModal = document.getElementById('closeInstallModal');
+
+  // ----------------------------------------------------
+  // PWA Install Prompt Logic
+  // ----------------------------------------------------
+  let deferredInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (installAppBtn) installAppBtn.style.display = 'block';
+  });
+
+  if (installAppBtn) {
+    installAppBtn.addEventListener('click', async () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          console.log('[EDITH PWA] Installé avec succès !');
+        }
+        deferredInstallPrompt = null;
+      } else {
+        // Show manual install guide modal (especially for iOS Safari)
+        if (installModal) installModal.classList.add('show');
+      }
+    });
+  }
+
+  if (closeInstallModal) {
+    closeInstallModal.addEventListener('click', () => {
+      installModal.classList.remove('show');
+    });
+  }
+
+  // ----------------------------------------------------
+  // Audio Visualizer Waveform Canvas
+  // ----------------------------------------------------
+  const waveCtx = waveformCanvas ? waveformCanvas.getContext('2d') : null;
+  let waveAnimationId = null;
+  let wavePhase = 0;
+
+  function renderWaveform() {
+    if (!waveCtx || !waveformCanvas) return;
+    const width = waveformCanvas.width = waveformCanvas.offsetWidth * (window.devicePixelRatio || 1);
+    const height = waveformCanvas.height = waveformCanvas.offsetHeight * (window.devicePixelRatio || 1);
+    waveCtx.clearRect(0, 0, width, height);
+
+    const isSpeaking = window.edithAudio && window.edithAudio.isSpeaking;
+    const isListening = window.edithSpeech && window.edithSpeech.isListening;
+
+    const numPoints = 28;
+    const step = width / (numPoints - 1);
+    const centerY = height / 2;
+
+    waveCtx.beginPath();
+    waveCtx.lineWidth = 2 * (window.devicePixelRatio || 1);
+
+    if (isListening) {
+      waveCtx.strokeStyle = '#ff7b00'; // Vision orange
+      waveCtx.shadowColor = 'rgba(255, 123, 0, 0.8)';
+      waveCtx.shadowBlur = 8;
+    } else if (isSpeaking) {
+      waveCtx.strokeStyle = '#00e5ff'; // JARVIS cyan
+      waveCtx.shadowColor = 'rgba(0, 229, 255, 0.8)';
+      waveCtx.shadowBlur = 8;
+    } else {
+      waveCtx.strokeStyle = 'rgba(0, 229, 255, 0.3)';
+      waveCtx.shadowBlur = 0;
+    }
+
+    for (let i = 0; i < numPoints; i++) {
+      const x = i * step;
+      let amplitude = 2;
+
+      if (isListening) {
+        amplitude = Math.sin(i * 0.4 + wavePhase) * (height * 0.35);
+      } else if (isSpeaking) {
+        amplitude = Math.sin(i * 0.5 + wavePhase * 1.5) * (height * 0.4) * Math.sin(i / numPoints * Math.PI);
+      } else {
+        amplitude = Math.sin(i * 0.2 + wavePhase * 0.5) * 3;
+      }
+
+      const y = centerY + amplitude;
+      if (i === 0) waveCtx.moveTo(x, y);
+      else waveCtx.lineTo(x, y);
+    }
+    waveCtx.stroke();
+
+    wavePhase += 0.08;
+    waveAnimationId = requestAnimationFrame(renderWaveform);
+  }
+  renderWaveform();
+
+  // ----------------------------------------------------
+  // Tactical Header Clock & Telemetry Loop
+  // ----------------------------------------------------
+  function updateHeaderTime() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('fr-FR', { hour12: false });
+    if (headerTime) headerTime.textContent = `T+${timeStr}`;
+  }
+  setInterval(updateHeaderTime, 1000);
+  updateHeaderTime();
+
+  async function updateHeaderBattery() {
+    if (navigator.getBattery) {
+      try {
+        const b = await navigator.getBattery();
+        const pct = Math.round(b.level * 100);
+        if (headerBattery) headerBattery.textContent = `${pct}% ${b.charging ? '⚡' : ''}`;
+        if (telemBattery) telemBattery.textContent = `${pct}% ${b.charging ? '(Charge)' : ''}`;
+      } catch (e) {}
+    }
+  }
+  updateHeaderBattery();
+
+  // ----------------------------------------------------
+  // Navigation Tabs Switching
+  // ----------------------------------------------------
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.dataset.tab;
+      window.edithAudio.playBeep(1000, 0.04);
+
+      tabButtons.forEach(b => b.classList.remove('active'));
+      tabPanes.forEach(p => p.classList.remove('active'));
+
+      btn.classList.add('active');
+      const pane = document.getElementById(targetTab);
+      if (pane) pane.classList.add('active');
+
+      // Camera lifecycle
+      if (targetTab === 'tabVision') {
+        window.edithVision.startCamera();
+      } else {
+        window.edithVision.stopCamera();
+      }
+
+      // Refresh telemetry when entering tools
+      if (targetTab === 'tabTools') {
+        refreshToolsView();
+      }
+    });
+  });
+
+  // ----------------------------------------------------
+  // Reactor States
+  // ----------------------------------------------------
+  function setReactorState(state, statusText = '') {
+    if (!reactorWrapper) return;
+    reactorWrapper.classList.remove('listening', 'speaking', 'processing');
+
+    if (state === 'listening') {
+      reactorWrapper.classList.add('listening');
+      if (voiceMainBtn) voiceMainBtn.classList.add('listening');
+      if (edithStatusText) edithStatusText.textContent = statusText || 'ÉCOUTE VOCALE EN COURS...';
+    } else if (state === 'speaking') {
+      reactorWrapper.classList.add('speaking');
+      if (voiceMainBtn) voiceMainBtn.classList.remove('listening');
+      if (edithStatusText) edithStatusText.textContent = statusText || 'E.D.I.T.H. RÉPOND...';
+    } else if (state === 'processing') {
+      reactorWrapper.classList.add('processing');
+      if (voiceMainBtn) voiceMainBtn.classList.remove('listening');
+      if (edithStatusText) edithStatusText.textContent = statusText || 'ANALYSE EN COURS...';
+    } else {
+      if (voiceMainBtn) voiceMainBtn.classList.remove('listening');
+      if (edithStatusText) edithStatusText.textContent = statusText || 'SYSTÈME NOMINAL // PRÊT';
+    }
+  }
+
+  // ----------------------------------------------------
+  // Dialogue & Chat System
+  // ----------------------------------------------------
+  function appendMessage(sender, text, isMarkdown = false) {
+    if (!dialogueStream) return;
+
+    const msg = document.createElement('div');
+    msg.className = `message-bubble ${sender}`;
+
+    const now = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const isEdith = sender === 'edith';
+
+    msg.innerHTML = `
+      <div class="msg-header">
+        <span class="${isEdith ? 'msg-author-edith' : 'msg-author-user'}">
+          ${isEdith ? '⚡ E.D.I.T.H. // TACTICAL' : '👤 ' + (window.edithAI.userName || 'COMMANDANT')}
+        </span>
+        <span class="msg-timestamp">${now}</span>
+      </div>
+      <div class="msg-body">${formatMessageText(text)}</div>
+      ${isEdith ? `
+        <div class="msg-actions">
+          <button class="msg-act-btn replay-speech-btn" title="Réécouter">🔊 Réécouter</button>
+          <button class="msg-act-btn copy-msg-btn" title="Copier">📋 Copier</button>
+        </div>
+      ` : ''}
+    `;
+
+    // Action handlers for bubble
+    if (isEdith) {
+      const replayBtn = msg.querySelector('.replay-speech-btn');
+      if (replayBtn) {
+        replayBtn.addEventListener('click', () => {
+          setReactorState('speaking');
+          window.edithAudio.speak(text, null, () => setReactorState('idle'));
+        });
+      }
+
+      const copyBtn = msg.querySelector('.copy-msg-btn');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          navigator.clipboard.writeText(text);
+          copyBtn.textContent = '✓ Copié !';
+          setTimeout(() => copyBtn.textContent = '📋 Copier', 2000);
+        });
+      }
+    }
+
+    dialogueStream.appendChild(msg);
+    dialogueStream.scrollTop = dialogueStream.scrollHeight;
+  }
+
+  function formatMessageText(text) {
+    if (!text) return '';
+    // Format bold, code blocks, lists
+    let html = text
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+      .replace(/`([^`]+)`/g, '<code style="background:rgba(0,229,255,0.1);padding:2px 4px;border-radius:3px;">$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
+    return html;
+  }
+
+  async function handleUserSubmit(userInputText) {
+    const text = (userInputText || messageInput.value || '').trim();
+    if (!text) return;
+
+    if (messageInput) messageInput.value = '';
+    appendMessage('user', text);
+    setReactorState('processing', 'ANALYSE DU PROTOCOLE...');
+
+    try {
+      const reply = await window.edithAI.ask(text);
+      appendMessage('edith', reply);
+      setReactorState('speaking', 'SYNTHÈSE VOCALE...');
+
+      window.edithAudio.speak(reply, 
+        () => setReactorState('speaking'),
+        () => setReactorState('idle')
+      );
+    } catch (err) {
+      appendMessage('edith', `Erreur système : ${err.message}`);
+      setReactorState('idle');
+      window.edithAudio.playWarning();
+    }
+  }
+
+  if (sendBtn) {
+    sendBtn.addEventListener('click', () => handleUserSubmit());
+  }
+
+  if (messageInput) {
+    messageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleUserSubmit();
+    });
+  }
+
+  // ----------------------------------------------------
+  // Voice Input (Speech Recognition)
+  // ----------------------------------------------------
+  if (voiceMainBtn) {
+    voiceMainBtn.addEventListener('click', () => {
+      window.edithAudio.ensureAudioResumed();
+      window.edithSpeech.toggle();
+    });
+  }
+
+  if (reactorWrapper) {
+    reactorWrapper.addEventListener('click', () => {
+      window.edithAudio.ensureAudioResumed();
+      // If currently speaking, stop speech
+      if (window.edithAudio.isSpeaking) {
+        window.edithAudio.stopSpeaking();
+        setReactorState('idle');
+        return;
+      }
+      window.edithSpeech.toggle();
+    });
+  }
+
+  window.edithSpeech.onStartCallback = () => {
+    setReactorState('listening', 'ÉCOUTE ACTIVE...');
+  };
+
+  window.edithSpeech.onResultCallback = (finalText, interimText) => {
+    if (messageInput) {
+      messageInput.value = finalText || interimText;
+    }
+    if (finalText) {
+      handleUserSubmit(finalText);
+    }
+  };
+
+  window.edithSpeech.onEndCallback = () => {
+    if (!window.edithAudio.isSpeaking && reactorWrapper.classList.contains('listening')) {
+      setReactorState('idle');
+    }
+  };
+
+  window.edithSpeech.onErrorCallback = (err) => {
+    setReactorState('idle', 'ERREUR MICROPHONE');
+    setTimeout(() => setReactorState('idle'), 2500);
+  };
+
+  // ----------------------------------------------------
+  // Quick Action Chips
+  // ----------------------------------------------------
+  quickChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const prompt = chip.dataset.prompt;
+      if (prompt) {
+        window.edithAudio.playBeep(700, 0.05);
+        handleUserSubmit(prompt);
+      }
+    });
+  });
+
+  // ----------------------------------------------------
+  // AR Vision Scanner Controls
+  // ----------------------------------------------------
+  window.edithVision.init(cameraVideo, cameraCanvas);
+
+  if (arScanBtn) {
+    arScanBtn.addEventListener('click', async () => {
+      try {
+        arScanBtn.disabled = true;
+        arScanBtn.innerHTML = '⚡ ANALYSE TACTIQUE EN COURS...';
+        
+        const result = await window.edithVision.scanAndAnalyze();
+        
+        if (arResultsText) arResultsText.innerHTML = formatMessageText(result);
+        if (arResultsModal) arResultsModal.classList.add('show');
+
+        window.edithAudio.speak(result);
+      } catch (err) {
+        alert("Erreur de scan : " + err.message);
+      } finally {
+        arScanBtn.disabled = false;
+        arScanBtn.innerHTML = '⚡ SCANNER LA CIBLE';
+      }
+    });
+  }
+
+  if (closeArResults) {
+    closeArResults.addEventListener('click', () => {
+      arResultsModal.classList.remove('show');
+      window.edithAudio.stopSpeaking();
+    });
+  }
+
+  if (switchCamBtn) {
+    switchCamBtn.addEventListener('click', () => {
+      window.edithVision.toggleCamera();
+    });
+  }
+
+  if (torchBtn) {
+    torchBtn.addEventListener('click', async () => {
+      const state = await window.edithVision.toggleTorch();
+      torchBtn.style.color = state ? 'var(--vision-orange-bright)' : 'var(--jarvis-blue)';
+    });
+  }
+
+  // ----------------------------------------------------
+  // Tools View: Notes, Timer & Telemetry
+  // ----------------------------------------------------
+  function renderNotes() {
+    if (!notesContainer) return;
+    const notes = window.edithTools.getNotes();
+    notesContainer.innerHTML = '';
+
+    if (notes.length === 0) {
+      notesContainer.innerHTML = `<div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);padding:6px 0;">Aucune note dans le journal tactique.</div>`;
+      return;
+    }
+
+    notes.forEach(note => {
+      const item = document.createElement('div');
+      item.className = 'note-item';
+      item.innerHTML = `
+        <div style="flex:1;">
+          <span style="font-size:9px;color:var(--jarvis-blue);margin-right:6px;">[${note.date}]</span>
+          <span>${note.text}</span>
+        </div>
+        <button class="note-del-btn" data-id="${note.id}">✕</button>
+      `;
+      item.querySelector('.note-del-btn').addEventListener('click', () => {
+        window.edithTools.deleteNote(note.id);
+        renderNotes();
+      });
+      notesContainer.appendChild(item);
+    });
+  }
+
+  if (addNoteBtn && noteInput) {
+    addNoteBtn.addEventListener('click', () => {
+      const text = noteInput.value.trim();
+      if (text) {
+        window.edithTools.addNote(text);
+        noteInput.value = '';
+        renderNotes();
+      }
+    });
+    noteInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addNoteBtn.click();
+    });
+  }
+
+  // Timer Presets
+  timerPresetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const secs = parseInt(btn.dataset.seconds, 10);
+      window.edithTools.startTimer(
+        secs,
+        (formatted) => { if (timerDisplay) timerDisplay.textContent = formatted; },
+        () => { if (timerDisplay) timerDisplay.textContent = '00:00'; }
+      );
+    });
+  });
+
+  if (stopTimerBtn) {
+    stopTimerBtn.addEventListener('click', () => {
+      window.edithTools.stopTimer();
+      if (timerDisplay) timerDisplay.textContent = '00:00';
+      window.edithAudio.playBeep(400, 0.05);
+    });
+  }
+
+  // SOS Beacon
+  if (sosBtn) {
+    sosBtn.addEventListener('click', () => {
+      const active = window.edithTools.toggleSOS((state) => {
+        document.body.style.backgroundColor = state ? '#ff1100' : 'var(--bg-dark)';
+      });
+      sosBtn.textContent = active ? 'ARRÊTER BALISE SOS' : 'DÉCLENCHER BALISE SOS';
+      sosBtn.classList.toggle('orange', active);
+      if (!active) document.body.style.backgroundColor = 'var(--bg-dark)';
+    });
+  }
+
+  async function refreshToolsView() {
+    renderNotes();
+    const telem = await window.edithTools.getDeviceTelemetry();
+    if (telemCoords) {
+      telemCoords.textContent = 'Acquisition GPS...';
+      const coords = await window.edithTools.getTacticalCoordinates();
+      telemCoords.textContent = `${coords.lat}, ${coords.lon}`;
+    }
+    if (telemNet) telemNet.textContent = telem.online ? 'En ligne (Uplink 100%)' : 'Hors ligne';
+    if (telemScreen) telemScreen.textContent = `${telem.screen} (${telem.cores})`;
+  }
+
+  // ----------------------------------------------------
+  // Settings & Configuration
+  // ----------------------------------------------------
+  function initSettingsUI() {
+    if (providerSelect) providerSelect.value = window.edithAI.provider;
+    if (apiKeyInput) apiKeyInput.value = window.edithAI.apiKey;
+    if (modelSelect) modelSelect.value = window.edithAI.customModel;
+    if (userCallsignInput) userCallsignInput.value = window.edithAI.userName;
+
+    // Populate voices in select dropdown
+    const populateVoices = () => {
+      if (!voiceSelect) return;
+      voiceSelect.innerHTML = '';
+      const availableVoices = window.edithAudio.getAvailableVoices();
+      availableVoices.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.voiceURI;
+        opt.textContent = `${v.name} (${v.lang})`;
+        if (window.edithAudio.preferredVoice && window.edithAudio.preferredVoice.voiceURI === v.voiceURI) {
+          opt.selected = true;
+        }
+        voiceSelect.appendChild(opt);
+      });
+    };
+
+    populateVoices();
+    setTimeout(populateVoices, 1000);
+  }
+
+  if (saveSettingsBtn) {
+    saveSettingsBtn.addEventListener('click', () => {
+      window.edithAI.setCredentials(
+        providerSelect.value,
+        apiKeyInput.value,
+        modelSelect.value,
+        userCallsignInput.value
+      );
+
+      if (voiceSelect) {
+        window.edithAudio.setVoice(voiceSelect.value);
+      }
+
+      window.edithAudio.playSuccess();
+      alert("Protocoles et paramètres de sécurité E.D.I.T.H. enregistrés avec succès !");
+    });
+  }
+
+  if (testVoiceBtn) {
+    testVoiceBtn.addEventListener('click', () => {
+      if (voiceSelect) window.edithAudio.setVoice(voiceSelect.value);
+      window.edithAudio.speak(`Système opérationnel. Bonjour, ${window.edithAI.userName}. Je suis prête à vous assister.`);
+    });
+  }
+
+  if (clearChatBtn) {
+    clearChatBtn.addEventListener('click', () => {
+      if (confirm("Voulez-vous réinitialiser le journal de conversation ?")) {
+        window.edithAI.clearHistory();
+        if (dialogueStream) dialogueStream.innerHTML = '';
+        appendMessage('edith', `Journal réinitialisé. Tous les systèmes sont en ligne. Que puis-je faire pour vous, ${window.edithAI.userName} ?`);
+        window.edithAudio.playBeep(600, 0.08);
+      }
+    });
+  }
+
+  // ----------------------------------------------------
+  // Initialization & Boot sequence
+  // ----------------------------------------------------
+  initSettingsUI();
+  renderNotes();
+
+  // Initial welcome message
+  setTimeout(() => {
+    window.edithAudio.playBootSound();
+    appendMessage(
+      'edith',
+      `Bonjour, ${window.edithAI.userName}. Je suis **E.D.I.T.H.** (Even Dead, I'm The Hero).\n\n` +
+      `Tous vos protocoles tactiques sont chargés :\n` +
+      `• **Bleu J.A.R.V.I.S.** pour le réseau et l'interface holographique.\n` +
+      `• **Orange Vision** pour la régulation d'énergie et la vision optique.\n` +
+      `• Mode vocal et visuel AR prêts.\n\n` +
+      `Appuyez sur le **Réacteur ARC central** ou sur le bouton micro orange pour me parler directement !`
+    );
+  }, 400);
+
+  // Register Service Worker for PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('[EDITH] Service Worker opérationnel :', reg.scope))
+        .catch(err => console.warn('[EDITH] Erreur Service Worker :', err));
+    });
+  }
+});
